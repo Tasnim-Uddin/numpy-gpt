@@ -169,8 +169,9 @@ class Linear:
         return dY @ self.W.T                 # (B, T, d_in), same shape as X
 
     def params_and_grads(self):
-        """[(name, parameter, gradient)]; call after backward."""
-        return [("W", self.W, self.dW), ("b", self.b, self.db)]
+        """[(name, parameter, gradient)]; gradient is None before the first backward."""
+        return [("W", self.W, getattr(self, "dW", None)),
+                ("b", self.b, getattr(self, "db", None))]
 
 
 class ReLU:
@@ -283,8 +284,9 @@ class LayerNorm:
         return (dX_hat - mean_dX_hat - self.X_hat * mean_dX_hat_X_hat) / self.std  # (B, T, d_model)
 
     def params_and_grads(self):
-        """[(name, parameter, gradient)]; call after backward."""
-        return [("gamma", self.gamma, self.dgamma), ("beta", self.beta, self.dbeta)]
+        """[(name, parameter, gradient)]; gradient is None before the first backward."""
+        return [("gamma", self.gamma, getattr(self, "dgamma", None)),
+                ("beta", self.beta, getattr(self, "dbeta", None))]
 
 
 class MultiHeadAttention:
@@ -432,8 +434,8 @@ class EmbeddingLayer:
         np.add.at(self.dW, ids_rows, dY_rows)
 
     def params_and_grads(self):
-        """[(name, parameter, gradient)]; call after backward."""
-        return [("W", self.W, self.dW)]
+        """[(name, parameter, gradient)]; gradient is None before the first backward."""
+        return [("W", self.W, getattr(self, "dW", None))]
 
 
 class PositionalEncodings:
@@ -474,8 +476,8 @@ class PositionalEncodings:
         return dY
 
     def params_and_grads(self):
-        """[(name, parameter, gradient)]; call after backward."""
-        return [("W", self.W, self.dW)]
+        """[(name, parameter, gradient)]; gradient is None before the first backward."""
+        return [("W", self.W, getattr(self, "dW", None))]
 
 
 class TransformerBlock:
