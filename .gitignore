@@ -1,0 +1,15 @@
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Dataset (downloaded with curl, so no need to store it)
+data/
+
+# Editor settings
+.vscode/
