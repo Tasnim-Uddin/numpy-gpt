@@ -16,16 +16,24 @@ Maths in comments:
     ^T          transpose (of the last two axes for batched arrays, i.e. .mT)
 
 Layer interface (every layer follows this):
-    forward(X)    computes the output Y and saves whatever backward will need
-    backward(dY)  dY is the adjoint of the output, dL/dY.
-                  Returns dX, the adjoint of the input (for the previous layer).
-                  Stores parameter adjoints (dW, db, dgamma, dbeta) next to their
-                  parameters, for the update step.
+    forward(X)          computes the output Y and saves whatever backward will need
+    backward(dY)        dY is the adjoint of the output, dL/dY.
+                        Returns dX, the adjoint of the input (for the previous layer).
+                        Stores parameter adjoints (dW, db, dgamma, dbeta) next to their
+                        parameters, for the update step.
+    params_and_grads()  [(name, parameter, gradient)] for every parameter in the layer;
+                        call after backward. The parameters are the layer's own arrays
+                        (not copies), so changing them changes the model.
     An adjoint always has the same shape as its variable: each entry is the
     derivative of the loss L with respect to that entry.
 """
 
 import numpy as np
+
+
+def with_prefix(prefix, params):
+    """Prefix each parameter name, e.g. 'W' -> 'fc1.W', so names show where they live."""
+    return [(f"{prefix}.{name}", param, grad) for name, param, grad in params]
 
 
 class Softmax:
@@ -160,6 +168,10 @@ class Linear:
         # Send each output's error back along the same weights
         return dY @ self.W.T                 # (B, T, d_in), same shape as X
 
+    def params_and_grads(self):
+        """[(name, parameter, gradient)]; call after backward."""
+        return [("W", self.W, self.dW), ("b", self.b, self.db)]
+
 
 class ReLU:
     """Element-wise max(0, x): negatives become 0, positives pass through."""
@@ -216,6 +228,11 @@ class FeedForwardNetwork:
         dH1 = self.relu.backward(dH2)   # dH1 = dH2 (*) 1[H1 > 0]  (B, T, 4*d_model)
         return self.fc1.backward(dH1)   # dX  = dH1 W1^T           (B, T, d_model)
 
+    def params_and_grads(self):
+        """All parameters of fc1 and fc2."""
+        return (with_prefix("fc1", self.fc1.params_and_grads())
+                + with_prefix("fc2", self.fc2.params_and_grads()))
+
 
 class LayerNorm:
     """
@@ -264,6 +281,10 @@ class LayerNorm:
         mean_dX_hat = dX_hat.mean(axis=-1, keepdims=True)                          # (B, T, 1) route through the mean
         mean_dX_hat_X_hat = (dX_hat * self.X_hat).mean(axis=-1, keepdims=True)     # (B, T, 1) route through s
         return (dX_hat - mean_dX_hat - self.X_hat * mean_dX_hat_X_hat) / self.std  # (B, T, d_model)
+
+    def params_and_grads(self):
+        """[(name, parameter, gradient)]; call after backward."""
+        return [("gamma", self.gamma, self.dgamma), ("beta", self.beta, self.dbeta)]
 
 
 class MultiHeadAttention:
@@ -363,6 +384,13 @@ class MultiHeadAttention:
                 + self.W_k.backward(dK_merged)
                 + self.W_v.backward(dV_merged))            # (B, T, d_model)
 
+    def params_and_grads(self):
+        """All parameters of the four projections."""
+        return (with_prefix("W_q", self.W_q.params_and_grads())
+                + with_prefix("W_k", self.W_k.params_and_grads())
+                + with_prefix("W_v", self.W_v.params_and_grads())
+                + with_prefix("W_o", self.W_o.params_and_grads()))
+
 
 class EmbeddingLayer:
     """
@@ -395,13 +423,17 @@ class EmbeddingLayer:
         N = B * T
 
         # One row per position, as in the maths
-        ids_rows = self.token_ids.reshape(N)     # (N,)       token at each position
+        ids_rows = self.token_ids.reshape(N)     # (N,)         token at each position
         dY_rows = dY.reshape(N, d)               # (N, d_model) adjoint at each position
 
         # dW = U^T dY: add each position's adjoint into its token's row.
         # np.add.at ADDS for repeated IDs (dW[ids] += ... would keep only one of them)
         self.dW = np.zeros_like(self.W)          # tokens not in the batch keep 0
         np.add.at(self.dW, ids_rows, dY_rows)
+
+    def params_and_grads(self):
+        """[(name, parameter, gradient)]; call after backward."""
+        return [("W", self.W, self.dW)]
 
 
 class PositionalEncodings:
@@ -440,6 +472,10 @@ class PositionalEncodings:
         self.dW[:T] = dY.sum(axis=0)             # (T, d_model)
 
         return dY
+
+    def params_and_grads(self):
+        """[(name, parameter, gradient)]; call after backward."""
+        return [("W", self.W, self.dW)]
 
 
 class TransformerBlock:
@@ -481,6 +517,13 @@ class TransformerBlock:
         # Attention sub-layer, reversed
         dS1 = self.ln1.backward(dX1)                 # through LayerNorm_1
         return dS1 + self.attn.backward(dS1)         # residual: direct route + route through attention
+
+    def params_and_grads(self):
+        """All parameters of attention, both LayerNorms, and the FFN."""
+        return (with_prefix("attn", self.attn.params_and_grads())
+                + with_prefix("ln1", self.ln1.params_and_grads())
+                + with_prefix("ffn", self.ffn.params_and_grads())
+                + with_prefix("ln2", self.ln2.params_and_grads()))
 
 
 class GPT:
@@ -537,3 +580,12 @@ class GPT:
         # 1. Positional embeddings (stores dW_P), then token embeddings (stores dW_E)
         dX = self.positional_encoding.backward(dX)
         self.token_embedding.backward(dX)
+
+    def params_and_grads(self):
+        """Every parameter in the model with its gradient, named by where it lives; call after backward."""
+        params = with_prefix("token_embedding", self.token_embedding.params_and_grads())
+        params += with_prefix("positional_encoding", self.positional_encoding.params_and_grads())
+        for i, block in enumerate(self.blocks):
+            params += with_prefix(f"blocks.{i}", block.params_and_grads())
+        params += with_prefix("lm_head", self.lm_head.params_and_grads())
+        return params
