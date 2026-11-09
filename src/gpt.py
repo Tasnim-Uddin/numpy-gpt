@@ -115,11 +115,6 @@ class CrossEntropyWithSoftmax:
         return (self.P - Y_onehot) / N
 
 
-class Z_LossWithSoftmax:
-    """TODO: auxiliary z-loss, coef * mean(logsumexp(logits)**2). Training-only."""
-    pass
-
-
 class Linear:
     """
     Fully connected layer: Y = X W + 1 b^T

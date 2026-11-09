@@ -155,6 +155,7 @@ Every layer follows the same interface:
 ## Possible next steps
 
 - Pre-norm blocks with a final LayerNorm (GPT-2 style)
+- Z-loss (an auxiliary penalty on log Z) and QK-norm, for training stability
 - RMSNorm, RoPE and SwiGLU (modern LLM components)
 - Dropout and AdamW (decoupled weight decay) to reduce overfitting
 - A learning-rate schedule (warmup and cosine decay)
