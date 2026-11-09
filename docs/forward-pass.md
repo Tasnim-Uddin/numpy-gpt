@@ -57,11 +57,11 @@ The token embedding says *what* each token is, and the positional embedding says
 Each block has two sub-layers. Each sub-layer's output is **added** to its input (a residual connection), then normalised (post-norm):
 
 $$
-S_1 = X + \operatorname{MultiHead}(X), \qquad X_1 = \operatorname{LN}_1(S_1)
+S_1 = X + \mathrm{MultiHead}(X), \qquad X_1 = \mathrm{LN}_1(S_1)
 $$
 
 $$
-S_2 = X_1 + \operatorname{FFN}(X_1), \qquad Y = \operatorname{LN}_2(S_2)
+S_2 = X_1 + \mathrm{FFN}(X_1), \qquad Y = \mathrm{LN}_2(S_2)
 $$
 
 ```mermaid
@@ -96,7 +96,7 @@ Q = XW^Q, \qquad K = XW^K, \qquad V = XW^V
 $$
 
 $$
-\operatorname{Attention}(Q, K, V) = \operatorname{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}} + M\right)V
+\mathrm{Attention}(Q, K, V) = \mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}} + M\right)V
 $$
 
 - Entry $(i, j)$ of $QK^\top$ is $\mathbf{q}_i \cdot \mathbf{k}_j$: how well token $i$'s query matches token $j$'s key.
@@ -125,7 +125,7 @@ This is what makes training on every position at once valid: each position's tar
 With $h$ heads, the $d$ features are split into $h$ groups of $d_k = d / h$. Each head runs its own attention, so each can learn a different pattern. The outputs are concatenated and mixed by an output projection:
 
 $$
-\operatorname{MultiHead}(X) = \operatorname{Concat}(\text{head}_1, \ldots, \text{head}_h)\,W^O
+\mathrm{MultiHead}(X) = \mathrm{Concat}(\text{head}_1, \ldots, \text{head}_h)\,W^O
 $$
 
 ```mermaid
@@ -149,7 +149,7 @@ flowchart TD
 A two-layer MLP applied to each position separately, expanding to $d_{\text{ff}} = 4d$ and back:
 
 $$
-\operatorname{FFN}(X) = \operatorname{ReLU}\!\left(XW_1 + \mathbf{1}\mathbf{b}_1^\top\right)W_2 + \mathbf{1}\mathbf{b}_2^\top
+\mathrm{FFN}(X) = \mathrm{ReLU}\!\left(XW_1 + \mathbf{1}\mathbf{b}_1^\top\right)W_2 + \mathbf{1}\mathbf{b}_2^\top
 $$
 
 The hidden units act like pattern detectors: ReLU keeps the ones that fire (positive) and zeroes the rest, and the second layer turns the detected patterns into an update to the token's vector. Without the ReLU, the two layers would collapse into a single linear map.

@@ -240,7 +240,7 @@ $$
 $$
 
 $$
-\frac{\partial \mathbf{p}}{\partial \mathbf{z}} = \operatorname{diag}(\mathbf{p}) - \mathbf{p}\mathbf{p}^\top
+\frac{\partial \mathbf{p}}{\partial \mathbf{z}} = \mathrm{diag}(\mathbf{p}) - \mathbf{p}\mathbf{p}^\top
 \qquad n \times n
 $$
 
@@ -261,20 +261,20 @@ This gives the same result as multiplying by the $n \times n$ Jacobian, without 
 
 ### Many rows at once
 
-With one softmax per row of $P$, let $\operatorname{rowsum}(M) = M\mathbf{1}$ hold each row's sum:
+With one softmax per row of $P$, let $\mathrm{rowsum}(M) = M\mathbf{1}$ hold each row's sum:
 
 $$
-\bar{Z} = P \odot \left(\bar{P} - \operatorname{rowsum}\left(P \odot \bar{P}\right)\mathbf{1}^\top\right)
+\bar{Z} = P \odot \left(\bar{P} - \mathrm{rowsum}\left(P \odot \bar{P}\right)\mathbf{1}^\top\right)
 $$
 
-$\operatorname{rowsum}(P \odot \bar{P})\,\mathbf{1}^\top$ copies each row's value of $\mathbf{p}^\top\bar{\mathbf{p}}$ across that row.
+$\mathrm{rowsum}(P \odot \bar{P})\,\mathbf{1}^\top$ copies each row's value of $\mathbf{p}^\top\bar{\mathbf{p}}$ across that row.
 
 ### In code (`Softmax.backward`)
 
 | maths | code |
 |---|---|
 | $P$ | `self.P`, saved in `forward` |
-| $\operatorname{rowsum}(P \odot \bar{P})$ | `p_dot_dY = (self.P * dY).sum(axis=-1, keepdims=True)` |
+| $\mathrm{rowsum}(P \odot \bar{P})$ | `p_dot_dY = (self.P * dY).sum(axis=-1, keepdims=True)` |
 | $P \odot (\bar{P} - \ldots\mathbf{1}^\top)$ | `return self.P * (dY - p_dot_dY)` (the `(..., 1)` shape broadcasts across each row) |
 
 ---
@@ -306,7 +306,7 @@ With $d_{\text{ff}} = 4d$:
 $$
 H_1 = XW_1 + \mathbf{1}\mathbf{b}_1^\top,
 \qquad
-H_2 = \operatorname{ReLU}(H_1),
+H_2 = \mathrm{ReLU}(H_1),
 \qquad
 Y = H_2W_2 + \mathbf{1}\mathbf{b}_2^\top
 $$
@@ -435,7 +435,7 @@ $$
 $$
 
 $$
-\bar{\mathbf{x}} = \frac{1}{s}\Big(\mathbf{g} - \operatorname{mean}(\mathbf{g})\,\mathbf{1} - \hat{\mathbf{x}}\,\operatorname{mean}(\mathbf{g} \odot \hat{\mathbf{x}})\Big)
+\bar{\mathbf{x}} = \frac{1}{s}\Big(\mathbf{g} - \mathrm{mean}(\mathbf{g})\,\mathbf{1} - \hat{\mathbf{x}}\,\mathrm{mean}(\mathbf{g} \odot \hat{\mathbf{x}})\Big)
 $$
 
 Each position uses only its own $\mathbf{g}$, $\hat{\mathbf{x}}$ and $s$: the input isn't shared, so there's no sum over positions.
@@ -453,8 +453,8 @@ $$
 | $s$, $\hat{\mathbf{x}}$ | `self.std`, `self.X_hat`, saved in `forward` |
 | $\bar{\boldsymbol{\gamma}}$, $\bar{\boldsymbol{\beta}}$ | `(dY * self.X_hat).reshape(N, d).sum(axis=0)`, `dY.reshape(N, d).sum(axis=0)` |
 | $\mathbf{g} = \boldsymbol{\gamma} \odot \bar{\mathbf{y}}$ | `dX_hat = self.gamma * dY` |
-| $\operatorname{mean}(\mathbf{g})$ | `mean_dX_hat = dX_hat.mean(axis=-1, keepdims=True)` |
-| $\operatorname{mean}(\mathbf{g} \odot \hat{\mathbf{x}})$ | `mean_dX_hat_X_hat = (dX_hat * self.X_hat).mean(axis=-1, keepdims=True)` |
+| $\mathrm{mean}(\mathbf{g})$ | `mean_dX_hat = dX_hat.mean(axis=-1, keepdims=True)` |
+| $\mathrm{mean}(\mathbf{g} \odot \hat{\mathbf{x}})$ | `mean_dX_hat_X_hat = (dX_hat * self.X_hat).mean(axis=-1, keepdims=True)` |
 | $\bar{\mathbf{x}}$ | `return (dX_hat - mean_dX_hat - self.X_hat * mean_dX_hat_X_hat) / self.std` |
 
 ---
@@ -469,7 +469,7 @@ $$
 | 2 | split into heads: $Q$, $K$, $V$ | $(B, h, T, d_k)$ |
 | 3 | scores: $S = QK^\top / \sqrt{d_k}$ | $(B, h, T, T)$ |
 | 4 | causal mask: entries above the diagonal set to $-\infty$ | $(B, h, T, T)$ |
-| 5 | attention weights: $A = \operatorname{softmax}(S)$, row by row | $(B, h, T, T)$ |
+| 5 | attention weights: $A = \mathrm{softmax}(S)$, row by row | $(B, h, T, T)$ |
 | 6 | weighted values: $O = AV$ | $(B, h, T, d_k)$ |
 | 7 | merge heads: $O_{\text{merged}}$ | $(B, T, d)$ |
 | 8 | output projection: $Y = O_{\text{merged}}W^O + \mathbf{1}\mathbf{b}_O^\top$ | $(B, T, d)$ |
@@ -511,7 +511,7 @@ $$
 **Step 7, merge heads.** Merging only rearranges entries, so its adjoint is the reverse rearrangement:
 
 $$
-\bar{O} = \operatorname{split}\big(\bar{O}_{\text{merged}}\big)
+\bar{O} = \mathrm{split}\big(\bar{O}_{\text{merged}}\big)
 $$
 
 **Step 6, $O = AV$.** The product rule with $M = A$, $N = V$:
@@ -525,7 +525,7 @@ $$
 **Step 5, softmax.** Row by row (Section 4):
 
 $$
-\bar{S} = A \odot \left(\bar{A} - \operatorname{rowsum}\left(A \odot \bar{A}\right)\mathbf{1}^\top\right)
+\bar{S} = A \odot \left(\bar{A} - \mathrm{rowsum}\left(A \odot \bar{A}\right)\mathbf{1}^\top\right)
 $$
 
 **Step 4, mask.** Masked scores were replaced by a constant, so their adjoint is $0$. This is already true: masked positions have $A_{ij} = 0$, so step 5 gives $\bar{S}_{ij} = 0$ there.
@@ -549,11 +549,11 @@ Both have shape $T \times d_k$.
 **Step 2, split heads.** The reverse rearrangement, merge:
 
 $$
-\bar{Q}_{\text{full}} = \operatorname{merge}(\bar{Q}),
+\bar{Q}_{\text{full}} = \mathrm{merge}(\bar{Q}),
 \quad
-\bar{K}_{\text{full}} = \operatorname{merge}(\bar{K}),
+\bar{K}_{\text{full}} = \mathrm{merge}(\bar{K}),
 \quad
-\bar{V}_{\text{full}} = \operatorname{merge}(\bar{V})
+\bar{V}_{\text{full}} = \mathrm{merge}(\bar{V})
 $$
 
 **Step 1, projections.** $X$ feeds all three projections, so its adjoint is the sum over the three routes:
@@ -603,23 +603,23 @@ The direct term passes the adjoint back unchanged, which gives the gradient a cl
 Forward:
 
 $$
-S_1 = X + \operatorname{MultiHead}(X),
+S_1 = X + \mathrm{MultiHead}(X),
 \quad
-X_1 = \operatorname{LN}_1(S_1),
+X_1 = \mathrm{LN}_1(S_1),
 \quad
-S_2 = X_1 + \operatorname{FFN}(X_1),
+S_2 = X_1 + \mathrm{FFN}(X_1),
 \quad
-Y = \operatorname{LN}_2(S_2)
+Y = \mathrm{LN}_2(S_2)
 $$
 
 Backward, in reverse, applying the residual rule at each sum:
 
 $$
 \begin{aligned}
-\bar{S}_2 &= \operatorname{LN}_2.\text{backward}(\bar{Y}) \\
-\bar{X}_1 &= \bar{S}_2 + \operatorname{FFN}.\text{backward}(\bar{S}_2) \\
-\bar{S}_1 &= \operatorname{LN}_1.\text{backward}(\bar{X}_1) \\
-\bar{X} &= \bar{S}_1 + \operatorname{MultiHead}.\text{backward}(\bar{S}_1)
+\bar{S}_2 &= \mathrm{LN}_2.\text{backward}(\bar{Y}) \\
+\bar{X}_1 &= \bar{S}_2 + \mathrm{FFN}.\text{backward}(\bar{S}_2) \\
+\bar{S}_1 &= \mathrm{LN}_1.\text{backward}(\bar{X}_1) \\
+\bar{X} &= \bar{S}_1 + \mathrm{MultiHead}.\text{backward}(\bar{S}_1)
 \end{aligned}
 $$
 
@@ -712,13 +712,13 @@ Each position's vector is shared across the batch, so its adjoint sums over $b$ 
 Forward, with $\ell$ the number of blocks:
 
 $$
-X_0 = \operatorname{PosEnc}\big(\operatorname{Embed}(\text{ids})\big),
+X_0 = \mathrm{PosEnc}\big(\mathrm{Embed}(\text{ids})\big),
 \qquad
-X_i = \operatorname{Block}_i(X_{i-1}),
+X_i = \mathrm{Block}_i(X_{i-1}),
 \qquad
-Z = \operatorname{LMHead}(X_\ell),
+Z = \mathrm{LMHead}(X_\ell),
 \qquad
-L = \operatorname{CE}(Z)
+L = \mathrm{CE}(Z)
 $$
 
 Backward, starting from the loss:
@@ -726,10 +726,10 @@ Backward, starting from the loss:
 $$
 \begin{aligned}
 \bar{Z} &= \tfrac{1}{N}\left(P - Y\right) \\
-\bar{X}_\ell &= \operatorname{LMHead}.\text{backward}(\bar{Z}) \\
-\bar{X}_{i-1} &= \operatorname{Block}_i.\text{backward}(\bar{X}_i), \qquad i = \ell, \ldots, 1 \\
-\bar{E} &= \operatorname{PosEnc}.\text{backward}(\bar{X}_0) \\
-&\operatorname{Embed}.\text{backward}(\bar{E})
+\bar{X}_\ell &= \mathrm{LMHead}.\text{backward}(\bar{Z}) \\
+\bar{X}_{i-1} &= \mathrm{Block}_i.\text{backward}(\bar{X}_i), \qquad i = \ell, \ldots, 1 \\
+\bar{E} &= \mathrm{PosEnc}.\text{backward}(\bar{X}_0) \\
+&\mathrm{Embed}.\text{backward}(\bar{E})
 \end{aligned}
 $$
 

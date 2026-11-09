@@ -137,13 +137,13 @@ $\epsilon$ is a fixed constant, not a learned parameter. It only matters when th
 This prevents a *training* instability rather than an overflow. If the components of $\mathbf{q}$ and $\mathbf{k}$ have mean 0 and variance 1, their dot product sums $d_k$ such products:
 
 $$
-\operatorname{Var}(\mathbf{q} \cdot \mathbf{k}) = d_k
+\mathrm{Var}(\mathbf{q} \cdot \mathbf{k}) = d_k
 $$
 
 Large scores make softmax nearly one-hot, and its gradients close to zero (*saturation*). Dividing by $\sqrt{d_k}$ restores variance 1, since scaling by $a$ scales the variance by $a^2$:
 
 $$
-\operatorname{Var}\!\left(\frac{\mathbf{q} \cdot \mathbf{k}}{\sqrt{d_k}}\right) = \frac{d_k}{d_k} = 1
+\mathrm{Var}\!\left(\frac{\mathbf{q} \cdot \mathbf{k}}{\sqrt{d_k}}\right) = \frac{d_k}{d_k} = 1
 $$
 
 Dividing by $d_k$ instead would overshoot, giving variance $1 / d_k$ and a nearly uniform softmax.
