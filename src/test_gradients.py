@@ -81,4 +81,3 @@ def check_gradients(checks_per_param=None, h=1e-5, seed=0):
 
 if __name__ == "__main__":
     check_gradients()
-    

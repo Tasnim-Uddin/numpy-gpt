@@ -5,10 +5,11 @@ Each optimiser's step() is called once per training step, after model.backward()
 
 import numpy as np
 
+
 class SGD:
     """
     Stochastic gradient descent:  theta <- theta - lr * dtheta
-    dtheta is the adjoint of THIS step's batch loss (an unbiased estimate
+    dtheta is the adjoint of THIS step's mini-batch loss (an unbiased estimate
     of the full-data gradient).
     """
 
@@ -20,6 +21,8 @@ class SGD:
         """Updates every parameter in place, using the gradients from the latest backward."""
         # Fetched fresh each step: every backward creates new gradient arrays
         for name, param, grad in self.model.params_and_grads():
+            if grad is None:   # no backward has run for this parameter yet
+                continue
             param -= self.lr * grad   # in place, so the model's own arrays change
 
 
@@ -52,6 +55,9 @@ class Adam:
         bias_correction2 = 1 - self.beta2 ** self.t
 
         for name, param, grad in self.model.params_and_grads():
+            if grad is None:
+                raise RuntimeError(f"No gradient for {name}: call model.backward() before optimiser.step().")
+
             # First step for this parameter: both averages start at zero
             if name not in self.m:
                 self.m[name] = np.zeros_like(param)

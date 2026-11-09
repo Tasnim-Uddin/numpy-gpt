@@ -14,7 +14,7 @@ from gpt import GPT, Softmax
 # ---------------------------------------------------------------- settings
 PROMPT = "ROMEO:\n"      # text to start from (every character must be in the vocabulary)
 MAX_NEW_TOKENS = 500     # how many characters to generate
-TEMPERATURE = 0.8        # < 1: safer, more predictable;  > 1: more varied, more mistakes
+TEMPERATURE = 0.8        # > 0.  < 1: safer, more predictable;  > 1: more varied, more mistakes
 SEED = 0                 # same seed -> same generated text
 
 CHECKPOINT_DIR = Path(__file__).parent.parent / "checkpoints"
@@ -39,10 +39,11 @@ def load_model():
     # Same settings as training, so every parameter has the same shape as the saved one
     model = GPT(**config)
 
-    # Copy each saved array INTO the model's own array (in place, so the model changes)
-    weights = np.load(CHECKPOINT_DIR / "model.npz")
-    for name, param, _ in model.params_and_grads():
-        param[...] = weights[name]
+    # Copy each saved array INTO the model's own array (in place, so the model changes).
+    # 'with' closes the .npz file once the weights are copied.
+    with np.load(CHECKPOINT_DIR / "model.npz") as weights:
+        for name, param, _ in model.params_and_grads():
+            param[...] = weights[name]
 
     return model, tokenizer
 
@@ -52,6 +53,15 @@ def generate(model, tokenizer, prompt, max_new_tokens, temperature, rng):
     Autoregressive sampling: predict the next character, sample it, append it, repeat.
     Prints each character as it is generated, and returns the full text.
     """
+    # Clear errors up front, instead of a crash deep inside the model
+    if not prompt:
+        raise ValueError("The prompt must contain at least one character.")
+    unknown = sorted(set(prompt) - set(tokenizer.chars))
+    if unknown:
+        raise ValueError(f"The prompt contains characters not in the vocabulary: {unknown}")
+    if temperature <= 0:
+        raise ValueError("The temperature must be > 0 (for greedy decoding, use np.argmax instead of sampling).")
+
     softmax = Softmax()
     ids = np.array([tokenizer.encode(prompt)])            # (1, T): one sequence
     print(prompt, end="", flush=True)

@@ -4,6 +4,40 @@ A GPT (decoder-only transformer) built from scratch in NumPy, with **every forwa
 
 Trained on Tiny Shakespeare at the character level, it learns to generate Shakespeare-style text.
 
+## Sample output
+
+After training (212,417 parameters, 5,000 steps, about 5 minutes on a laptop CPU), prompted with `ROMEO:` at temperature 0.8:
+
+```
+ROMEO:
+Shall on wife this hands husband the treambles
+Therefore that I forth sucked your lordsharit,
+at you'ld gone that short her first of pintes,
+To holy take for the lord! what by thou gentleman my
+wifether contage if all this as man?
+
+JULIET:
+Do my muntery, holest the man
+To stuorshiph the man lights to and now close
+That is the have I to follow,
+But, and her from a new lieve--and do told.
+Comfort it we holf purtivious mark, pray prison broother,
+Blour of inframent anle of the fear of it.
+```
+
+Starting from random weights, the model has learned the structure of a play (speaker names in capitals followed by a colon, then lines of verse), real character names, mostly real English words, and Shakespearean forms like *thou*. It still invents words and has no meaning across sentences: it builds text one character at a time and only sees the last 64 characters, as expected for a model this small.
+
+### Training
+
+| step | train loss | validation loss |
+|---|---|---|
+| 0 | 4.19 | 4.19 |
+| 1,000 | 2.00 | 2.04 |
+| 2,500 | 1.72 | 1.88 |
+| 5,000 | 1.56 | 1.75 |
+
+The loss starts at ln 65 ≈ 4.17 (random guessing among 65 characters) and ends with a validation loss of 1.75, a perplexity of e^1.75 ≈ 5.7: on average the model is as uncertain as choosing between about 6 characters instead of 65. The widening gap between training and validation loss shows the first signs of overfitting.
+
 ## Highlights
 
 - **Hand-derived backpropagation** for every layer: cross-entropy, linear, ReLU, layer norm, softmax, causal multi-head attention, residual connections, and token and positional embeddings
@@ -40,6 +74,8 @@ numpy-gpt/
 │   ├── train.py            # training loop, evaluation, checkpointing
 │   ├── generate.py         # autoregressive text generation
 │   └── test_gradients.py   # central-difference gradient check
+├── data/                   # Tiny Shakespeare (downloaded; not in the repo)
+├── checkpoints/            # trained weights (created by train.py; not in the repo)
 ├── requirements.txt
 └── README.md
 ```
@@ -72,7 +108,7 @@ All commands run from the project root.
 python src/test_gradients.py
 ```
 
-**Train** (saves the weights to `checkpoints/`):
+**Train** (saves the weights to `checkpoints/`; takes about 5 minutes on a laptop CPU):
 
 ```bash
 python src/train.py
@@ -100,17 +136,6 @@ Settings such as model size, learning rate, prompt and temperature are constants
 | optimiser | Adam, learning rate 1e-3 |
 | training steps | 5,000 |
 
-## Results
-
-<!-- Fill in from your training run, for example: -->
-<!-- Final loss after 5,000 steps: train X.XX, validation X.XX (starting from ln 65 ≈ 4.17). -->
-
-Sample output (temperature 0.8, prompt `ROMEO:`):
-
-```
-<!-- paste a sample from python src/generate.py -->
-```
-
 ## How the backward pass works
 
 Every layer follows the same interface:
@@ -131,8 +156,9 @@ Every layer follows the same interface:
 
 - Pre-norm blocks with a final LayerNorm (GPT-2 style)
 - RMSNorm, RoPE and SwiGLU (modern LLM components)
+- Dropout and AdamW (decoupled weight decay) to reduce overfitting
+- A learning-rate schedule (warmup and cosine decay)
 - Byte-pair encoding (BPE) tokenizer
-- AdamW (decoupled weight decay)
 - A PyTorch version, also used to cross-check these gradients
 
 ## References

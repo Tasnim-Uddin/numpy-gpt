@@ -21,8 +21,9 @@ Layer interface (every layer follows this):
                         Returns dX, the adjoint of the input (for the previous layer).
                         Stores parameter adjoints (dW, db, dgamma, dbeta) next to their
                         parameters, for the update step.
-    params_and_grads()  [(name, parameter, gradient)] for every parameter in the layer;
-                        call after backward. The parameters are the layer's own arrays
+    params_and_grads()  [(name, parameter, gradient)] for every parameter in the layer.
+                        Gradients are None before the first backward. The parameters are
+                        the layer's own arrays (not copies), so changing them changes the model.
                         (not copies), so changing them changes the model.
     An adjoint always has the same shape as its variable: each entry is the
     derivative of the loss L with respect to that entry.
@@ -465,7 +466,7 @@ class PositionalEncodings:
         returns: (B, T, d_model) dX = dY (the addition passes the adjoint straight through)
         stores:  self.dW (context_length, d_model): rows 0..T-1 = sum of dY over the batch, rest 0
         """
-        B, T, d = dY.shape
+        T = dY.shape[1]
 
         # Rows T and beyond weren't used in this forward pass, so their adjoint is 0
         self.dW = np.zeros_like(self.W)
@@ -584,7 +585,7 @@ class GPT:
         self.token_embedding.backward(dX)
 
     def params_and_grads(self):
-        """Every parameter in the model with its gradient, named by where it lives; call after backward."""
+        """Every parameter in the model with its gradient, named by where it lives (gradients None before backward)."""
         params = with_prefix("token_embedding", self.token_embedding.params_and_grads())
         params += with_prefix("positional_encoding", self.positional_encoding.params_and_grads())
         for i, block in enumerate(self.blocks):
