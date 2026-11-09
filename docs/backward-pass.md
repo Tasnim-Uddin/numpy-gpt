@@ -1,4 +1,4 @@
-# Derivations
+# The backward pass
 
 Hand derivations of every backward pass in `src/gpt.py`. Each section gives the forward pass, derives the backward pass with index notation and the chain rule, and shows how the result maps to the code.
 
