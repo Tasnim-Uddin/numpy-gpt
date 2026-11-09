@@ -44,6 +44,7 @@ The loss starts at ln 65 ≈ 4.17 (random guessing among 65 characters) and ends
 - **Gradient checking**: every parameter's analytic gradient is verified against central-difference estimates
 - **Optimisers written from scratch**: SGD and Adam (with bias correction)
 - **Complete pipeline**: character-level tokenizer, mini-batch training with validation loss, checkpointing, and temperature-controlled text generation
+- **Documentation**: the architecture, every derivation, and the numerical details, explained in [`docs/`](docs/README.md)
 
 ## Architecture
 
@@ -63,10 +64,13 @@ $$
 \text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}} + M\right) V
 $$
 
+More detail, with diagrams and the shape at every step: [docs/forward-pass.md](docs/forward-pass.md).
+
 ## Project structure
 
 ```
 numpy-gpt/
+├── docs/                   # explanations and derivations (start with docs/README.md)
 ├── src/
 │   ├── gpt.py              # model: every layer's forward and backward pass
 │   ├── data.py             # character tokenizer, train/val split, random batches
@@ -136,6 +140,19 @@ Settings such as model size, learning rate, prompt and temperature are constants
 | optimiser | Adam, learning rate 1e-3 |
 | training steps | 5,000 |
 
+## Documentation
+
+Detailed explanations live in [`docs/`](docs/README.md):
+
+| document | covers |
+|---|---|
+| [Forward pass](docs/forward-pass.md) | architecture, data flow and shapes, with diagrams |
+| [Backward pass](docs/backward-pass.md) | every layer's gradients, derived by hand |
+| [Numerical stability](docs/numerical-stability.md) | avoiding overflow, `log(0)` and division by zero |
+| [Gradient checking](docs/gradient-checking.md) | verifying gradients with central differences |
+| [Optimisers](docs/optimisers.md) | mini-batch SGD and Adam |
+| [Data and generation](docs/data-and-generation.md) | tokenizer, batches, training loop, sampling and temperature |
+
 ## How the backward pass works
 
 Every layer follows the same interface:
@@ -152,13 +169,15 @@ Every layer follows the same interface:
 | softmax (per row) | $\bar{z} = p \odot (\bar{p} - (p^\top \bar{p})\,\mathbf{1})$ | — |
 | residual, $S = X + F(X)$ | $\bar{X} = \bar{S} + F\text{.backward}(\bar{S})$ | — |
 
+Full derivations for every layer: [docs/backward-pass.md](docs/backward-pass.md).
+
 ## Possible next steps
 
 - Pre-norm blocks with a final LayerNorm (GPT-2 style)
-- Z-loss (an auxiliary penalty on log Z) and QK-norm, for training stability
 - RMSNorm, RoPE and SwiGLU (modern LLM components)
 - Dropout and AdamW (decoupled weight decay) to reduce overfitting
 - A learning-rate schedule (warmup and cosine decay)
+- Z-loss (an auxiliary penalty on log Z) and QK-norm, for training stability
 - Byte-pair encoding (BPE) tokenizer
 - A PyTorch version, also used to cross-check these gradients
 
